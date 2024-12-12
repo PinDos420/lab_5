@@ -1,0 +1,194 @@
+#include <iostream>
+#include <iterator>
+#include <cassert>
+
+class abstract_data_t {
+public:
+    virtual ~abstract_data_t() = 0;
+    virtual int& front() = 0;
+    virtual int& back() = 0;
+    virtual void push(int) = 0;
+    virtual void pop() = 0;
+    virtual void extend(const abstract_data_t&) = 0;
+    virtual bool empty() const = 0;
+    virtual size_t length() const = 0;
+    virtual int& operator[](size_t index) = 0;
+    virtual const int& operator[](size_t index) const = 0;
+    virtual bool operator==(const abstract_data_t& other) const = 0;
+    virtual abstract_data_t& operator=(const abstract_data_t& other) = 0;
+};
+
+inline abstract_data_t::~abstract_data_t() {}
+
+class YOUR_VARIANT : public abstract_data_t {
+private:
+    struct Node {
+        int data;
+        Node* next;
+        Node(int value) : data(value), next(nullptr) {}
+    };
+
+    Node* head;
+    Node* tail;
+    size_t size;
+
+public:
+    YOUR_VARIANT() : head(nullptr), tail(nullptr), size(0) {}
+
+    YOUR_VARIANT(const int* array, size_t length) : head(nullptr), tail(nullptr), size(0) {
+        for (size_t i = 0; i < length; ++i) {
+            push(array[i]);
+        }
+    }
+
+    YOUR_VARIANT(const YOUR_VARIANT& other) : head(nullptr), tail(nullptr), size(0) {
+        extend(other);
+    }
+
+    YOUR_VARIANT& operator=(const YOUR_VARIANT& other) {
+        if (this != &other) {
+            clear();
+            for (size_t i = 0; i < other.length(); ++i) {
+                push(other[i]);
+            }
+        }
+        return *this;
+    }
+
+    abstract_data_t& operator=(const abstract_data_t& other) override {
+        if (this != &other) {
+            clear();
+            for (size_t i = 0; i < other.length(); ++i) {
+                push(other[i]);
+            }
+        }
+        return *this;
+    }
+
+    ~YOUR_VARIANT() override {
+        clear();
+    }
+
+    int& front() override {
+        if (head) {
+            return head->data;
+        }
+        throw std::out_of_range("Queue is empty");
+    }
+
+    int& back() override {
+        if (tail) {
+            return tail->data;
+        }
+        throw std::out_of_range("Queue is empty");
+    }
+
+    void push(int value) override {
+        Node* newNode = new Node(value);
+        if (tail) {
+            tail->next = newNode;
+        }
+        else {
+            head = newNode;
+        }
+        tail = newNode;
+        ++size;
+    }
+
+    void pop() override {
+        if (head) {
+            Node* temp = head;
+            head = head->next;
+            delete temp;
+            --size;
+            if (size == 0) {
+                tail = nullptr;
+            }
+        }
+        else {
+            throw std::out_of_range("Queue is empty");
+        }
+    }
+
+    void extend(const abstract_data_t& other) override {
+        for (size_t i = 0; i < other.length(); ++i) {
+            push(other[i]);
+        }
+    }
+
+    bool empty() const override {
+        return size == 0;
+    }
+
+    size_t length() const override {
+        return size;
+    }
+
+    int& operator[](size_t index) override {
+        if (index >= size) {
+            throw std::out_of_range("Index out of range");
+        }
+        Node* current = head;
+        for (size_t i = 0; i < index; ++i) {
+            current = current->next;
+        }
+        return current->data;
+    }
+
+    const int& operator[](size_t index) const override {
+        if (index >= size) {
+            throw std::out_of_range("Index out of range");
+        }
+        Node* current = head;
+        for (size_t i = 0; i < index; ++i) {
+            current = current->next;
+        }
+        return current->data;
+    }
+
+    bool operator==(const abstract_data_t& other) const override {
+        if (size != other.length()) {
+            return false;
+        }
+        Node* current = head;
+        for (size_t i = 0; i < size; ++i) {
+            if (current->data != other[i]) {
+                return false;
+            }
+            current = current->next;
+        }
+        return true;
+    }
+
+private:
+    void clear() {
+        while (head) {
+            Node* temp = head;
+            head = head->next;
+            delete temp;
+        }
+        tail = nullptr;
+        size = 0;
+    }
+};
+
+int main(int argc, char const* argv[]) {
+    const int a[4] = { 2, 3, 5, 7 };
+    abstract_data_t* v = new YOUR_VARIANT(a, 4);
+    assert(!v->empty());
+    v->push(11);
+    assert(11 == v->back());
+    assert(11 == (*v)[v->length() - 1]);
+    const int b[3] = { 13, 17, 19 };
+    v->extend(YOUR_VARIANT(b, 3));
+    assert(8 == v->length());
+    abstract_data_t* w = new YOUR_VARIANT();
+    assert(w->empty());
+    *w = *v;
+    assert(*w == *v);
+    (*w)[0] = 0;
+    assert(0 == w->front());
+    w->pop();
+    assert(19 == w->back());
+    assert(7 == w->length());
+}
